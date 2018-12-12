@@ -25,6 +25,7 @@ import sys
 import xml.etree.ElementTree as ET
 
 
+ANCHO_DE_REPORTE = 80
 LLAVES = [{'denominacionPropia': 'fecha',
            'caminoXML': [
                 'Fecha']},
@@ -48,6 +49,24 @@ LLAVES = [{'denominacionPropia': 'fecha',
                 'Total']}]
 
 
+def imprimirItem(contenido, vinieta = '*', ancho = ANCHO_DE_REPORTE):
+
+    contenido = str(contenido)
+    anchoReal = ancho - len(vinieta) - 1
+    numeroDeLineas = (len(contenido) // anchoReal) + 1
+    if len(contenido) % anchoReal == 0:
+        numeroDeLineas -= 1
+
+    print(vinieta + ' ', end='')
+    for i in range(numeroDeLineas):
+        if i != 0:
+            print(' ' * (len(vinieta) + 1), end='')
+        if i == numeroDeLineas - 1:
+            print(contenido[i * anchoReal:], ' ' * (len(vinieta) + 1), sep='')
+        else:
+            print(contenido[i * anchoReal : (i + 1) * anchoReal])
+
+
 def imprimirTitulo(titulo):
     """Imprime en la salida estándar el título dado."""
     mitad = (80 - len(titulo) + 2) // 2
@@ -64,13 +83,14 @@ def imprimirTitulo(titulo):
 
 def imprimirDatos(datos):
     for i in datos:
-        print('*', i + ':', datos[i])
+        imprimirItem(datos[i])
     print('')
 
 def procesarXml(nombreDeArchivo, llaves=LLAVES):
     """Regresa un diccionario con la información relevante del archivo dado."""
 
-    print("=> Procesando", nombreDeArchivo, end='\n\n')
+    imprimirItem('Procesando ' + nombreDeArchivo, vinieta='=>')
+    print('')
     resultado = {}
     raiz = ET.parse(nombreDeArchivo).getroot()
     for llave in llaves:
