@@ -32,11 +32,11 @@ LLAVES = [
         {'denominacionPropia': 'emisor',
          'caminoXML': [
                 'Emisor',
-                'Nombre']},
+                'Nombre|Rfc']},
         {'denominacionPropia': 'receptor',
          'caminoXML': [
                 'Receptor',
-                'Nombre']},
+                'Nombre|Rfc']},
         {'denominacionPropia': 'subtotal',
          'caminoXML': [
                 'SubTotal']},
@@ -91,8 +91,12 @@ def imprimir_titulo(titulo):
 
 def imprimir_datos(datos):
     """Imprime el diccionario dado como una lista."""
-    for i in datos:
-        imprimir_item(datos[i])
+    for llave, elemento in datos.items():
+        imprimir_item(
+            elemento, 
+            vinieta='* %s:%s' % (
+                llave,
+                ' ' * (12 - len(llave))))
     print('')
 
 
@@ -114,8 +118,15 @@ def procesar_xml(nombre_de_archivo, llaves=LLAVES):
     resultado = {}
     raiz = ET.parse(nombre_de_archivo).getroot()
     for llave in llaves:
-        resultado[llave['denominacionPropia']] = \
-            buscar_elemento(raiz, llave['caminoXML'])
+        try:
+            resultado[llave['denominacionPropia']] = \
+                buscar_elemento(raiz, llave['caminoXML'])
+        except AttributeError:
+            # Factura sin impuestos
+            if llave['denominacionPropia'] == 'impuestos':
+                resultado['impuestos'] = '0.00'
+            else:
+                raise
     imprimir_datos(resultado)
     return resultado
 
@@ -129,7 +140,14 @@ def buscar_elemento(raiz, camino):
     del primer elemento del camino en la raíz dada.
     """
     if len(camino) == 1:
-        return raiz.attrib[camino[0]]
+        posibles_llaves = camino[0].split('|')
+        for llave in posibles_llaves:
+            try:
+                return raiz.attrib[llave]
+            except KeyError:
+                continue
+        raise AttributeError(('Sin ninguno de estos atributos: %s' 
+            % posibles_llaves))
     else:
         return buscar_elemento(raiz.find(
             '{http://www.sat.gob.mx/cfd/3}' + camino[0]), camino[1:])
@@ -145,7 +163,7 @@ if __name__ == '__main__':
     datos = []
     subtotal = impuestos = total = 0
     for archivo in os.listdir(carpetaDeFacturas):
-        if archivo[-3:] == 'xml':
+        if archivo[-3:].lower() == 'xml':
             datos.append(procesar_xml(
                 os.path.join(carpetaDeFacturas, archivo)))
             subtotal += float(datos[-1]['subtotal'])
@@ -153,5 +171,8 @@ if __name__ == '__main__':
             total += float(datos[-1]['total'])
 
     imprimir_titulo('Resultados')
-    imprimir_datos(
-            {'subtotal': subtotal, 'impuestos': impuestos, 'total': total})
+    imprimir_datos({
+        '# de faturas': len(datos),
+        'subtotal': subtotal, 
+        'impuestos': impuestos, 
+        'total': total})
